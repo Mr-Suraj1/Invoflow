@@ -3,8 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)  
 A comprehensive invoice and inventory management system built with Next.js, featuring user authentication, billing, inventory tracking, expense management, and detailed reporting.
 
-👉 **Live Demo:** [Your Vercel URL]  
-👉 **Repo:** https://github.com/Akash8585/invoice-flow
+👉 **Live Demo:** [https://invoflow-xi.vercel.app/]  
+👉 **Repo:** [https://github.com/Mr-Suraj1/Invoflow]
 
 ---
 
