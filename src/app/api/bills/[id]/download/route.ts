@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { bills, billItems, billExtraCharges, clients, inventory, items, businessProfiles, user } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { generateInvoicePDF } from '@/lib/invoice-pdf';
+import { auth } from '@/lib/auth/auth';
 
 export async function GET(
   request: NextRequest,
@@ -10,9 +11,18 @@ export async function GET(
 ) {
   let billId: string = 'unknown';
   try {
+    const session = await auth.api.getSession({
+      headers: request.headers
+    });
+
+    if (!session || !session.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
     const { id } = await params;
     billId = id;
-    
+
     // Fetch the bill with all related data using manual joins
     const billHeader = await db
       .select({
@@ -39,7 +49,7 @@ export async function GET(
       })
       .from(bills)
       .leftJoin(clients, eq(bills.clientId, clients.id))
-      .where(eq(bills.id, id))
+      .where(and(eq(bills.id, id), eq(bills.userId, userId)))
       .limit(1);
 
     if (billHeader.length === 0) {
