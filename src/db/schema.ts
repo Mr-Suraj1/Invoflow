@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, decimal, jsonb, real, index } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 					id: text('id').primaryKey(),
@@ -249,4 +249,62 @@ export const businessProfiles = pgTable("business_profiles", {
 	logo: text('logo'), // Base64 encoded image or URL
 	createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
 	updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull()
+});
+
+// ---------------------------------------------------------------------------
+// FDE Agentic Layer: agent runs, proposed actions, and human approvals
+// ---------------------------------------------------------------------------
+
+export type AgentRunStatus = 'running' | 'awaiting_approval' | 'completed' | 'failed' | 'rejected';
+export type AgentActionStatus = 'pending_approval' | 'auto_executed' | 'approved' | 'rejected' | 'failed';
+export type AgentRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type ApprovalDecision = 'approved' | 'rejected' | 'modified';
+
+// One row per LangGraph workflow execution (threadId = LangGraph thread for checkpoint resume)
+export const agentRuns = pgTable("agent_runs", {
+	id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+	userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+	threadId: text('thread_id').notNull(),
+	workflowType: text('workflow_type').notNull(), // 'purchase_bill_ingestion' | 'inventory_reconciliation' | 'invoice_draft'
+	status: text('status').$type<AgentRunStatus>().notNull().default('running'),
+	rawInput: jsonb('raw_input').notNull(), // original text/payload
+	extractedData: jsonb('extracted_data'), // Pydantic-validated structured output
+	confidenceScore: real('confidence_score'),
+	tokenUsage: integer('token_usage').notNull().default(0),
+	latencyMs: integer('latency_ms').notNull().default(0),
+	errorMessage: text('error_message'),
+	createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
+	updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull()
+}, (table) => [
+	index('agent_runs_thread_id_idx').on(table.threadId),
+	index('agent_runs_user_id_idx').on(table.userId),
+]);
+
+// One row per tool call the agent proposes; high-risk rows wait in the approval queue
+export const agentActions = pgTable("agent_actions", {
+	id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+	runId: text('run_id').notNull().references(() => agentRuns.id, { onDelete: 'cascade' }),
+	userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+	toolName: text('tool_name').notNull(), // 'create_purchase_bill' | 'adjust_inventory' | 'create_supplier'
+	argsJson: jsonb('args_json').notNull(), // proposed database payload
+	diffJson: jsonb('diff_json'), // before vs. after for existing records
+	riskLevel: text('risk_level').$type<AgentRiskLevel>().notNull(),
+	riskReasons: jsonb('risk_reasons').$type<string[]>().notNull().default([]),
+	status: text('status').$type<AgentActionStatus>().notNull().default('pending_approval'),
+	executedEntityId: text('executed_entity_id'), // ID of created bill/item once committed
+	createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull()
+}, (table) => [
+	index('agent_actions_run_id_idx').on(table.runId),
+	index('agent_actions_status_idx').on(table.status),
+]);
+
+// Immutable record of each human decision on an agent action
+export const approvals = pgTable("approvals", {
+	id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+	actionId: text('action_id').notNull().references(() => agentActions.id, { onDelete: 'cascade' }),
+	decidedBy: text('decided_by').notNull().references(() => user.id, { onDelete: 'cascade' }),
+	decision: text('decision').$type<ApprovalDecision>().notNull(),
+	modifiedArgsJson: jsonb('modified_args_json'), // set when the human edited the AI's fields before approving
+	reason: text('reason'),
+	decidedAt: timestamp('decided_at').$defaultFn(() => new Date()).notNull()
 });

@@ -346,3 +346,47 @@ export const units = [
   'set',
   'dozen'
 ] as const; 
+// ---------------------------------------------------------------------------
+// FDE Agentic Layer contracts (mirrored by Pydantic models in the Python agent service)
+// ---------------------------------------------------------------------------
+
+export const AGENT_WORKFLOW_TYPES = ['purchase_bill_ingestion', 'inventory_reconciliation', 'invoice_draft'] as const;
+export const AGENT_TOOL_NAMES = ['create_purchase_bill', 'adjust_inventory', 'create_supplier'] as const;
+export const AGENT_RISK_LEVELS = ['low', 'medium', 'high', 'critical'] as const;
+export const AGENT_RUN_STATUSES = ['running', 'awaiting_approval', 'completed', 'failed', 'rejected'] as const;
+export const AGENT_ACTION_STATUSES = ['pending_approval', 'auto_executed', 'approved', 'rejected', 'failed'] as const;
+
+// Input sent from Next.js to the agent service to start a workflow
+export const AgentRunInputSchema = z.object({
+  workflowType: z.enum(AGENT_WORKFLOW_TYPES),
+  threadId: z.string().min(1).optional(),
+  rawInput: z.union([
+    z.string().min(1, 'Input text is required'),
+    z.record(z.string(), z.unknown()),
+  ]),
+});
+
+// A single tool call proposed by the agent, plus the guardrail verdict
+export const AgentActionProposalSchema = z.object({
+  toolName: z.enum(AGENT_TOOL_NAMES),
+  argsJson: z.record(z.string(), z.unknown()),
+  diffJson: z.record(z.string(), z.unknown()).nullable().default(null),
+  riskLevel: z.enum(AGENT_RISK_LEVELS),
+  riskReasons: z.array(z.string()).default([]),
+});
+
+// Human decision on a pending action in the approval queue
+export const ApprovalDecisionSchema = z
+  .object({
+    decision: z.enum(['approved', 'rejected', 'modified']),
+    modifiedArgsJson: z.record(z.string(), z.unknown()).optional(),
+    reason: z.string().max(1000).optional(),
+  })
+  .refine((d) => d.decision !== 'modified' || !!d.modifiedArgsJson, {
+    message: 'modifiedArgsJson is required when decision is "modified"',
+    path: ['modifiedArgsJson'],
+  });
+
+export type AgentRunInput = z.infer<typeof AgentRunInputSchema>;
+export type AgentActionProposal = z.infer<typeof AgentActionProposalSchema>;
+export type ApprovalDecisionInput = z.infer<typeof ApprovalDecisionSchema>;

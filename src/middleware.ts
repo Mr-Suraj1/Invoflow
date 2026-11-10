@@ -16,5 +16,17 @@ export async function middleware(request: NextRequest) {
  
 export const config = {
   runtime: "nodejs",
-  matcher: ["/dashboard"], // Apply middleware to specific routes
+  matcher: [
+    "/dashboard/:path*",
+    "/billing/:path*",
+    "/purchase-bills/:path*",
+    "/clients/:path*",
+    "/suppliers/:path*",
+    "/items/:path*",
+    "/inventory/:path*",
+    "/expenses/:path*",
+    "/reports/:path*",
+    "/profile/:path*",
+    "/approvals/:path*",
+  ], // Protect all authenticated route groups
 };
