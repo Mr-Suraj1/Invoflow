@@ -14,7 +14,8 @@ import {
   Receipt,
   Menu,
   X,
-  DollarSign
+  DollarSign,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import UserBar from "@/components/user-bar";
@@ -46,6 +47,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
     { href: "/suppliers", icon: Truck, label: "Suppliers" },
     { href: "/billing", icon: Receipt, label: "Billing" },
     { href: "/expenses", icon: DollarSign, label: "Expenses" },
+    { href: "/approvals", icon: ShieldCheck, label: "AI Approvals" },
     { href: "/reports", icon: BarChart3, label: "Reports" },
   ];
 
