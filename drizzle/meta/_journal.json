@@ -57,6 +57,13 @@
       "when": 1753368911142,
       "tag": "0007_careless_lockjaw",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794300179185,
+      "tag": "0008_fde_agent_hitl_tables",
+      "breakpoints": true
     }
   ]
 }
